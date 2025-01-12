@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-app-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nodejs-app
+  template:
+    metadata:
+      labels:
+        app: nodejs-app
+    spec:
+      containers:
+      - name: nodejs-container
+        image: 676206914267.dkr.ecr.us-east-1.amazonaws.com/app:nodejs-k8s-pv-testing
+        ports:
+        - containerPort: 3000
+        env:
+        - name: PGHOST
+          value: "postgres-service"
+        - name: PGUSER
+          value: "postgres"
+        - name: PGPASSWORD
+          value: "password"
+        - name: PGDATABASE
+          value: "userdb"
+        - name: PGPORT
+          value: "5432"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodejs-app-service
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 3000
+    nodePort: 32055
+  selector:
+    app: nodejs-app

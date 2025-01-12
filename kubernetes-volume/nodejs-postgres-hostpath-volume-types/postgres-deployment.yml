@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          value: "password"
+        - name: POSTGRES_DB
+          value: "userdb"
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data  # Mount hostPath volume here
+      volumes:
+      - name: postgres-data
+        hostPath:
+          path: /mnt/data/postgres  # Path on the host node where data will be stored
+          type: DirectoryOrCreate  # Create the directory if it doesn't exist
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: postgres
+ 
+#don't use in multi node cluster
+ #how to test it just delete the postgres db and then recreate it data will still up after creating it 
