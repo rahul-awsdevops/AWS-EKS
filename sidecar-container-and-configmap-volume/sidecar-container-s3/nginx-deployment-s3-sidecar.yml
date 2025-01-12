@@ -1,0 +1,62 @@
+#Kubernetes Deployment manifest for an Nginx application with a sidecar container that sends logs to Amazon S3
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-app
+  labels:
+    app: nginx-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-app
+  template:
+    metadata:
+      labels:
+        app: nginx-app
+    spec:
+      containers:
+        - name: nginx-app
+          image: rahulranjan1207015/nginx-app:latest
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config-volume
+              mountPath: /etc/nginx/nginx.conf  # Mount the ConfigMap here as the nginx.conf file
+              subPath: nginx.conf  # Ensure the file is mounted correctly
+            - name: log-volume
+              mountPath: /var/log/nginx
+        - name: s3-log-sidecar-container
+          image: amazon/aws-cli:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                aws s3 cp /var/log/nginx/access.log s3://nginx-logs-bucket-1234567/nginx/access-$(date +%s).log
+                aws s3 cp /var/log/nginx/error.log s3://nginx-logs-bucket-1234567/nginx/error-$(date +%s).log
+                sleep 300  # Upload logs every 5 minutes
+              done
+          volumeMounts:
+            - name: log-volume
+              mountPath: /var/log/nginx    
+      volumes:
+        - name: nginx-config-volume
+          configMap:
+            name: nginx-config  # Name of the ConfigMap
+        - name: log-volume
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 32223
+  type: NodePort
